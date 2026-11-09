@@ -1,0 +1,447 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-lead",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        560,
+        272
+      ],
+      "id": "43a71d7d-bdaa-4782-aad2-ddd79d33fbd8",
+      "name": "On New Lead"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Email",
+              "lookupValue": "={{ $json.body.email.trim().toLowerCase() }}"
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        784,
+        272
+      ],
+      "id": "f143a70f-d109-410b-b4f6-42fd9f825970",
+      "name": "Find Existing Lead",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1a2c3d4-0001-4a1b-8c2d-000000000001",
+              "name": "name",
+              "value": "={{ $('On New Lead').item.json.body.name }}",
+              "type": "string"
+            },
+            {
+              "id": "b1a2c3d4-0002-4a1b-8c2d-000000000002",
+              "name": "email",
+              "value": "={{ $('On New Lead').item.json.body.email.trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "b1a2c3d4-0003-4a1b-8c2d-000000000003",
+              "name": "company",
+              "value": "={{ $('On New Lead').item.json.body.company }}",
+              "type": "string"
+            },
+            {
+              "id": "b1a2c3d4-0004-4a1b-8c2d-000000000004",
+              "name": "service",
+              "value": "={{ $('On New Lead').item.json.body.service }}",
+              "type": "string"
+            },
+            {
+              "id": "b1a2c3d4-0005-4a1b-8c2d-000000000005",
+              "name": "notes",
+              "value": "={{ $('On New Lead').item.json.body.notes ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "b1a2c3d4-0006-4a1b-8c2d-000000000006",
+              "name": "isNew",
+              "value": "={{ !$json.Email }}",
+              "type": "boolean"
+            },
+            {
+              "id": "b1a2c3d4-0007-4a1b-8c2d-000000000007",
+              "name": "submittedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1008,
+        272
+      ],
+      "id": "8241f2a5-f149-423c-a744-5109cf3e40d7",
+      "name": "Prepare Lead"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        496
+      ],
+      "id": "d66a2f96-963b-4997-b660-7e8c98393bcc",
+      "name": "Google Gemini Chat Model"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"subject\": {\n      \"type\": \"string\",\n      \"description\": \"Email subject line\"\n    },\n    \"body\": {\n      \"type\": \"string\",\n      \"description\": \"Email body content\"\n    }\n  },\n  \"required\": [\"subject\", \"body\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1392,
+        496
+      ],
+      "id": "4942b28a-85ca-4e9a-8b18-dad29913074a",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Lead Name: {{ $json.name }}\nService: {{ $json.service }}\nLead Type: {{ $json.isNew ? 'New lead' : 'Existing lead' }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=# Overview\nYou write short, professional confirmation emails for a business.\n\n## Rules\n- Be friendly, clear, and concise\n- Max 120 words\n- If Lead Type is 'New lead': welcome them and confirm we received their request\n- If Lead Type is 'Existing lead': acknowledge they have been in touch before and say we will follow up\n- Do not invent offers or details\n- Sign off as:\nBest,\nMr Cub\n\n## Output Format\nReturn a subject and a body."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1232,
+        272
+      ],
+      "id": "6272377c-1e40-4240-95d6-ee1801368011",
+      "name": "Generate Lead Email"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Prepare Lead').item.json.email }}",
+        "subject": "={{ $json.output.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.output.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1584,
+        272
+      ],
+      "id": "b9a0df66-1bd0-435b-bc6a-945b89eeae7a",
+      "name": "Send Email to Lead"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "=New Lead Captured\nName: {{ $('Prepare Lead').item.json.name }}\nEmail: {{ $('Prepare Lead').item.json.email }}\nService: {{ $('Prepare Lead').item.json.service }}\nLead Type: {{ $('Prepare Lead').item.json.isNew ? 'New Lead' : 'Existing Lead' }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1808,
+        272
+      ],
+      "id": "01fac648-3497-47a5-8909-d173871bdbf6",
+      "name": "Alert Team"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $('Prepare Lead').item.json.name }}",
+            "Email": "={{ $('Prepare Lead').item.json.email }}",
+            "Company": "={{ $('Prepare Lead').item.json.company }}",
+            "Service": "={{ $('Prepare Lead').item.json.service }}",
+            "Notes": "={{ $('Prepare Lead').item.json.notes }}",
+            "Lead Type": "={{ $('Prepare Lead').item.json.isNew ? 'New' : 'Existing' }}",
+            "Email Subject": "={{ $('Generate Lead Email').item.json.output.subject }}",
+            "Email Body": "={{ $('Generate Lead Email').item.json.output.body }}",
+            "Submitted At": "={{ $('Prepare Lead').item.json.submittedAt }}"
+          },
+          "matchingColumns": [
+            "Email"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Service",
+              "displayName": "Service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Lead Type",
+              "displayName": "Lead Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email Subject",
+              "displayName": "Email Subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email Body",
+              "displayName": "Email Body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Submitted At",
+              "displayName": "Submitted At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2032,
+        272
+      ],
+      "id": "7699c61f-4325-40ae-b9e6-a062a69771c7",
+      "name": "Save Lead to Sheet"
+    }
+  ],
+  "connections": {
+    "On New Lead": {
+      "main": [
+        [
+          {
+            "node": "Find Existing Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Existing Lead": {
+      "main": [
+        [
+          {
+            "node": "Prepare Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Lead": {
+      "main": [
+        [
+          {
+            "node": "Generate Lead Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Lead Email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Generate Lead Email",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Lead Email": {
+      "main": [
+        [
+          {
+            "node": "Send Email to Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email to Lead": {
+      "main": [
+        [
+          {
+            "node": "Alert Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Team": {
+      "main": [
+        [
+          {
+            "node": "Save Lead to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "On New Lead": [
+      {
+        "headers": {
+          "content-type": "application/json"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "name": "Jane Doe",
+          "email": "jane.doe@example.com",
+          "company": "Acme Studio",
+          "service": "Web Development",
+          "notes": "Looking for a new company website."
+        },
+        "webhookUrl": "http://localhost:5678/webhook-test/new-lead",
+        "executionMode": "test"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "name": "Lead Capture and Auto-Reply"
+}
