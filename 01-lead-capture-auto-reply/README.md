@@ -61,10 +61,10 @@ curl -X POST "<your-n8n-test-webhook-url>" \
 
 | Shows | Screenshot |
 |---|---|
-| Workflow canvas after a successful run | ![Workflow canvas](./screenshots/01-workflow-canvas.png) |
-| Confirmation email received | ![Email](./screenshots/02-email-received.png) |
-| Slack alert | ![Slack alert](./screenshots/03-slack-alert.png) |
-| Lead saved in Google Sheets | ![Google Sheet](./screenshots/04-google-sheet.png) |
+| Workflow canvas after a successful run | ![Workflow canvas](./screenshots/01-workflow-canvas.png.png) |
+| Confirmation email received | ![Email](./screenshots/02-email-received.png.png) |
+| Slack alert | ![Slack alert](./screenshots/03-slack-alert.png.png) |
+| Lead saved in Google Sheets | ![Google Sheet](./screenshots/04-google-sheet.png.png) |
 
 ## Design choices
 

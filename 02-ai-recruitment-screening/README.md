@@ -106,12 +106,12 @@ The template includes sample requirements for six roles. Replace them with your 
 
 | Shows | Screenshot |
 |---|---|
-| Workflow canvas, both flows | ![Workflow canvas](./screenshots/01-workflow-canvas.png) |
-| Candidates sheet with a scored row | ![Candidates sheet](./screenshots/02-candidates-sheet.png) |
-| Slack alert for a new candidate | ![Slack alert](./screenshots/03-slack-alert.png) |
-| Acknowledgement email received | ![Acknowledgement email](./screenshots/04-acknowledgement-email.png) |
-| Interview created on Google Calendar | ![Calendar event](./screenshots/05-calendar-event.png) |
-| Status email draft in Gmail | ![Status email draft](./screenshots/06-status-email-draft.png) |
+| Workflow canvas, both flows | ![Workflow canvas](./screenshots/01-workflow-canvas.png.png) |
+| Candidates sheet with a scored row | ![Candidates sheet](./screenshots/02-candidates-sheet.png.png) |
+| Slack alert for a new candidate | ![Slack alert](./screenshots/03-slack-alert.png.png) |
+| Acknowledgement email received | ![Acknowledgement email](./screenshots/04-acknowledgement-email.png.png) |
+| Interview created on Google Calendar | ![Calendar event](./screenshots/05-calendar-event.png.png) |
+| Status email draft in Gmail | ![Status email draft](./screenshots/06-status-email-draft.png.png) |
 
 ## Design choices
 
