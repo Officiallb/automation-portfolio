@@ -92,18 +92,19 @@ The template includes sample requirements for six roles. Replace them with your 
 5. Pick a Slack channel in the three Slack nodes and your calendar in the two Google Calendar nodes.
 6. Test flow 1. Click "Listen for test event" on the webhook node, then send the sample payload:
 
-```bash
-curl -X POST "<your-n8n-test-webhook-url>" \
-  -H "Content-Type: application/json" \
-  -d @sample-payload.json
-```
+   ```bash
+   curl -X POST "<your-n8n-test-webhook-url>" \
+     -H "Content-Type: application/json" \
+     -d @sample-payload.json
+   ```
 
    `sample-payload.json` is a fake applicant. Its `resume_url` points to `sample-resume.pdf` in this folder, which is also fictional. Change the email to your own address if you want to receive the acknowledgement. If you copy this project to another repo, update `resume_url` to the raw link of your copy, or use any public PDF link.
+
 7. Test flow 2. Change the `Status` of a candidate row to `shortlisted` or `rejected`. Within a minute the status flow runs.
 
 ## Screenshots
 
-| | |
+| Shows | Screenshot |
 |---|---|
 | Workflow canvas, both flows | ![Workflow canvas](./screenshots/01-workflow-canvas.png) |
 | Candidates sheet with a scored row | ![Candidates sheet](./screenshots/02-candidates-sheet.png) |

@@ -59,7 +59,7 @@ curl -X POST "<your-n8n-test-webhook-url>" \
 
 ## Screenshots
 
-| | |
+| Shows | Screenshot |
 |---|---|
 | Workflow canvas after a successful run | ![Workflow canvas](./screenshots/01-workflow-canvas.png) |
 | Confirmation email received | ![Email](./screenshots/02-email-received.png) |
