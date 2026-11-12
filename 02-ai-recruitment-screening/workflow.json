@@ -1,0 +1,1167 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-application",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1248,
+        256
+      ],
+      "id": "f5dbd45e-1b91-4946-a8e2-59d9cfebe6f0",
+      "name": "New Application"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "abc1f8a6-d801-4fa0-9097-0f3da2e35d8d",
+              "name": "name",
+              "value": "={{ ($json.body.name ?? '').trim().toLowerCase().replace(/\\b\\w/g, c => c.toUpperCase()) }}",
+              "type": "string"
+            },
+            {
+              "id": "5df731f3-a2cc-4303-b11a-6c162b0bb678",
+              "name": "email",
+              "value": "={{ ($json.body.email ?? '').trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "0b37f447-751e-4df4-ad9f-c4191a2ea403",
+              "name": "role",
+              "value": "={{ ($json.body.role ?? '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "7a66d102-0d9d-47ba-9e61-dce8ba24cc93",
+              "name": "resumeUrl",
+              "value": "={{ ($json.body.resume_url ?? '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "014d378f-79ca-4274-8ab7-43f0f65375e9",
+              "name": "missingFields",
+              "value": "={{ ['name','email','role','resume_url'].filter(k => !($json.body[k] ?? '').toString().trim()).join(', ') }}",
+              "type": "string"
+            },
+            {
+              "id": "8ee20781-20c9-41e6-a6c7-995a5f7a0a48",
+              "name": "isComplete",
+              "value": "={{ ['name','email','role','resume_url'].every(k => ($json.body[k] ?? '').toString().trim() !== '') }}",
+              "type": "boolean"
+            },
+            {
+              "id": "d8895d5f-b73e-468b-8e08-55375bb9f7dd",
+              "name": "submittedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1024,
+        256
+      ],
+      "id": "4ea49de1-35f4-4b27-89b4-82374ee03964",
+      "name": "Clean Application"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ec963ddc-6e3a-4fbd-be0d-3bfb1c869ea0",
+              "leftValue": "={{ $json.isComplete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -800,
+        256
+      ],
+      "id": "ede7b836-3eb3-416d-a6da-6e9dac39b7c6",
+      "name": "Complete Application?"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "text": "=Incomplete Application Received\n\nMissing fields: {{ $json.missingFields }}\n\nName: {{ $json.name }}\nEmail: {{ $json.email }}\nRole: {{ $json.role }}\nResume: {{ $json.resumeUrl }}\n\nPlease review the submission.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        -576,
+        352
+      ],
+      "id": "d65faf30-d17c-4798-9ef1-cd0cf93f691c",
+      "name": "Alert Incomplete Application"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Email",
+              "lookupValue": "={{ $('Clean Application').item.json.email }}"
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -576,
+        160
+      ],
+      "id": "a90309f6-ca12-409f-90b7-f72cbf623b80",
+      "name": "Find Existing Candidate",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1c63bf6f-efb2-4b6e-af66-c5c436d8cbab",
+              "leftValue": "={{ $json.Email ?? '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -352,
+        160
+      ],
+      "id": "4865a6a1-a1f4-4b21-a0d7-a90c11a81bad",
+      "name": "Already Applied?"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "text": "=⚠️ Duplicate Application\n\nName: {{ $('Clean Application').item.json.name }}\nEmail: {{ $('Clean Application').item.json.email }}\nRole: {{ $('Clean Application').item.json.role }}\nResume: {{ $('Clean Application').item.json.resumeUrl }}\n\nThis candidate has already applied.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        -128,
+        64
+      ],
+      "id": "d5901fa3-2abd-432f-bbfe-d4abe8bfbf98",
+      "name": "Alert Duplicate Application"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Clean Application').item.json.resumeUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -128,
+        256
+      ],
+      "id": "229e3246-ab16-4f17-91cd-c368c19f9eec",
+      "name": "Download Resume"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        256
+      ],
+      "id": "2c1116cb-c6b2-46de-b65f-a5fae4a66955",
+      "name": "Extract Resume Text"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        328,
+        488
+      ],
+      "id": "4b0e4734-0e49-4286-ac75-f883fa92d79d",
+      "name": "Google Gemini Chat Model"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Resume: {{ $json.text }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=# Overview\nYou are a resume parsing assistant. Extract key, job-relevant information from a resume and return it as clean, structured data.\n\n## Rules\n- Only extract information that is explicitly present in the resume.\n- Do not guess or infer missing details.\n- If a field is missing, use an empty string (or 0 for years_of_experience).\n- Never output null.\n- Keep the profile summary short and factual.\n- Use simple, professional language.\n- Output valid JSON only, with no explanations or extra text.\n\n## Output Format\nReturn a single JSON object with these fields: skills (comma-separated string), years_of_experience (number), education (string), profile_summary (string)."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        320,
+        256
+      ],
+      "id": "f9279007-9267-4800-b8bf-4aa901231f42",
+      "name": "Resume Parsing"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"skills\": {\n      \"type\": \"string\",\n      \"description\": \"List of technical skills, comma-separated\"\n    },\n    \"years_of_experience\": {\n      \"type\": \"number\",\n      \"minimum\": 0\n    },\n    \"education\": {\n      \"type\": \"string\"\n    },\n    \"profile_summary\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"skills\",\n    \"years_of_experience\",\n    \"education\",\n    \"profile_summary\"\n  ],\n  \"additionalProperties\": false\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        464,
+        496
+      ],
+      "id": "4dae88a3-19d9-4574-846d-11ed8d851056",
+      "name": "Resume Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Candidate Summary\nSkills: {{ $json.output.skills }}\nYears of Experience: {{ $json.output.years_of_experience }}\nEducation: {{ $json.output.education }}\nProfile Summary: {{ $json.output.profile_summary }}\nRole Applied For: {{ $('Clean Application').item.json.role }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=# Overview\nYou are a candidate scoring assistant. Evaluate how well a candidate matches a specific job role based on their resume summary.\n\n## Rules\n- Score candidates from 1 to 10 (decimals allowed).\n- Base the score strictly on skill match and experience.\n- Do not guess missing information.\n- Keep the reasoning under 2 sentences.\n- Output valid JSON only.\n- Never output null.\n\n## Tools\nJob Requirements: use this tool to look up the official requirements for the candidate's role. Pass the exact role name.\n- Roles available: Front End Developer, Back End Developer, Web Designer, DevOps Engineer, AI Engineer, Cloud Specialist.\n- Use only this information to produce the score and reasoning. Do not use outside knowledge or assumptions.\n\n## Output Format\nReturn a single JSON object with a score (number) and a fit_reason (short explanation of the score)."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        672,
+        256
+      ],
+      "id": "553863d5-65c2-4423-ab0d-ae1c8cd210e7",
+      "name": "Candidate Scoring"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "options": {},
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "role",
+              "lookupValue": "={{ $fromAI('role', 'The exact job role to look up requirements for', 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        688,
+        496
+      ],
+      "id": "c6824fab-cc87-4497-9c00-70605b3b71e3",
+      "name": "Job Requirements"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"score\": {\n      \"type\": \"number\",\n      \"minimum\": 1,\n      \"maximum\": 10,\n      \"description\": \"Numerical fit score from 1 to 10\"\n    },\n    \"fit_reason\": {\n      \"type\": \"string\",\n      \"description\": \"Short explanation justifying the score\"\n    }\n  },\n  \"required\": [\n    \"score\",\n    \"fit_reason\"\n  ],\n  \"additionalProperties\": false\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        808,
+        488
+      ],
+      "id": "843aaf7c-af8e-4954-9cae-82088bf8e05f",
+      "name": "Scoring Output Parser"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Candidate Name",
+              "displayName": "Candidate Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Role Applied For",
+              "displayName": "Role Applied For",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resume Link",
+              "displayName": "Resume Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Skills",
+              "displayName": "Skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Profile Summary",
+              "displayName": "Profile Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI Score",
+              "displayName": "AI Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fit Reason",
+              "displayName": "Fit Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Submitted At",
+              "displayName": "Submitted At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1248,
+        256
+      ],
+      "id": "70866f1c-fe77-4ae2-a5f8-2fab9dd199c0",
+      "name": "Save Candidate to Sheet"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "text": "=👤 New Candidate Application\n\nName: {{ $('Clean Application').item.json.name }}\nRole: {{ $('Clean Application').item.json.role }}\nAI Score: {{ $('Candidate Scoring').item.json.output.score }}/10\nStatus: new\n\nReview in the Candidates sheet when convenient.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1472,
+        256
+      ],
+      "id": "2ae391a8-1ff9-4cf0-be8f-81696eee1d6b",
+      "name": "Alert Team"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Candidate Name: {{ $('Clean Application').item.json.name }}\nRole Applied For: {{ $('Clean Application').item.json.role }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=# Overview\nGenerate a polite, professional confirmation email telling the candidate their application has been received and is under review.\n\n## Rules\n- Use a professional and friendly tone.\n- Do not promise acceptance or timelines.\n- Keep the email concise.\n- Personalise it with the candidate's name and role.\n- Do not use emojis.\n- Output valid JSON only, with no explanations or extra text.\n- Sign off as:\nSincerely,\nLB Team\n\n## Output Format\nReturn a single JSON object with a subject and a body."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1696,
+        256
+      ],
+      "id": "ca622a95-d964-4176-9aab-3c5ac3eefcf3",
+      "name": "Candidate Email Generator"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"subject\": {\n      \"type\": \"string\",\n      \"description\": \"Email subject line\"\n    },\n    \"body\": {\n      \"type\": \"string\",\n      \"description\": \"Email body content\"\n    }\n  },\n  \"required\": [\n    \"subject\",\n    \"body\"\n  ],\n  \"additionalProperties\": false\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1768,
+        488
+      ],
+      "id": "1e9567fc-9deb-45aa-86cd-a2562e379a89",
+      "name": "Email Output Parser"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Clean Application').item.json.email }}",
+        "subject": "={{ $json.output.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.output.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2048,
+        256
+      ],
+      "id": "d99e0e4e-ec2e-4638-ae9a-3303827e583e",
+      "name": "Send Acknowledgement"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "event": "rowUpdate",
+        "options": {
+          "columnsToWatch": [
+            "Status"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1248,
+        688
+      ],
+      "id": "150bcc21-395b-450c-bf8a-f88d880ee647",
+      "name": "Candidate Status Updated"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "abe0d950-4e63-4e77-b60c-5f2c9aa3e867",
+              "leftValue": "={{ ($json.Status ?? '').toLowerCase() }}",
+              "rightValue": "shortlisted",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "13980598-e472-420e-a7d2-c0cffd5515ca",
+              "leftValue": "={{ ($json.Status ?? '').toLowerCase() }}",
+              "rightValue": "rejected",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1024,
+        688
+      ],
+      "id": "866508ba-e766-46a4-9494-b30b4fe96297",
+      "name": "Shortlisted or Rejected?"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -792,
+        920
+      ],
+      "id": "32e4a3ac-f91a-4a71-ba99-28da1e1552e7",
+      "name": "Google Gemini Chat Model1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Candidate Name: {{ $json['Candidate Name'] }}\nStatus: {{ $json.Status }}\nRole Applied For: {{ $json['Role Applied For'] }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=# Overview\nYou are an HR automation assistant. Write a professional email (subject and body) for a job candidate based on their recruitment status.\n\nThe tone must be polite, neutral and corporate. Do not use emojis. Do not include unnecessary explanations.\n\n## Tools\n1. Check Availability: use ONLY when the status is \"shortlisted\", to find a free interview slot.\n- Check Monday to Friday only\n- Never schedule on the current date\n- Business hours are 9:00 AM to 5:00 PM\n- Skip weekends\n\n2. Create Event: use ONLY after availability has been confirmed. Create the interview event at the chosen date and time.\n- Summary: \"Interview Call with {{ $json['Candidate Name'] }}\"\n- Description: \"Initial interview discussion\"\n\n## Instructions\nYou will receive the candidate name, the job role and the status (\"shortlisted\" or \"rejected\").\n\n### If the status is \"shortlisted\"\n1. Use Check Availability to find a free interview time.\n2. Use Create Event to schedule the interview.\n3. Write an email that tells the candidate they have been shortlisted, confirms the interview date and time, and says further details will follow if needed.\n\n### If the status is \"rejected\"\n- Write a respectful rejection email thanking the candidate for their interest and time.\n- Do not mention scores, weaknesses or comparisons.\n- Do not use any tools.\n\n### Sign-off\nAlways end the email with:\nBest regards,\nLB Team\n\n### Output rules\n- Return only valid JSON with a subject and a body.\n- No markdown and no text outside the JSON.\n- Never output null.\n\n## Notes\n- Current date and time: {{ $now.toISO() }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -672,
+        688
+      ],
+      "id": "53b4e05c-d315-4e4e-96f5-397a61ca7efa",
+      "name": "Status Email Agent"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"subject\": {\n      \"type\": \"string\"\n    },\n    \"body\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"subject\",\n    \"body\"\n  ],\n  \"additionalProperties\": false\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -408,
+        920
+      ],
+      "id": "5f59cc51-1133-4664-a2f1-7ad3182b3d53",
+      "name": "Status Email Output Parser"
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "calendar": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "timeMin": "={{ $fromAI('Start_Time', 'Start of the time range to check, ISO format', 'string') }}",
+        "timeMax": "={{ $fromAI('End_Time', 'End of the time range to check, ISO format', 'string') }}",
+        "options": {
+          "outputFormat": "raw"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -664,
+        920
+      ],
+      "id": "f08482a7-a2d4-4bb3-9b3c-acdbea346da7",
+      "name": "Check Availability"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "start": "={{ $fromAI('Start', 'Interview start time, ISO format', 'string') }}",
+        "end": "={{ $fromAI('End', 'Interview end time, ISO format', 'string') }}",
+        "additionalFields": {
+          "attendees": [
+            "={{ $('Candidate Status Updated').first().json.Email }}"
+          ],
+          "description": "={{ $fromAI('Description', 'Event description', 'string') }}",
+          "summary": "={{ $fromAI('Summary', 'Event title', 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -536,
+        920
+      ],
+      "id": "cda78943-f74f-44bf-8366-19d0b51c9275",
+      "name": "Create Event"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.output.subject }}",
+        "message": "={{ $json.output.body }}",
+        "options": {
+          "sendTo": "={{ $('Candidate Status Updated').first().json.Email }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -208,
+        688
+      ],
+      "id": "839bf2a9-a4a3-4ab0-a23e-f0899a144780",
+      "name": "Draft Status Email"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e77b67f3-4a69-4f87-973b-ad7dfb4ac16c",
+              "name": "Candidate Name",
+              "value": "={{ $('Clean Application').item.json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "3a6172bc-4e83-474b-abcd-f7b39c2db2c9",
+              "name": "Email",
+              "value": "={{ $('Clean Application').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "fe59537f-289e-45c8-9371-25414cd47d37",
+              "name": "Role Applied For",
+              "value": "={{ $('Clean Application').item.json.role }}",
+              "type": "string"
+            },
+            {
+              "id": "b41c410c-b167-4f96-9204-b1113b24a408",
+              "name": "Resume Link",
+              "value": "={{ $('Clean Application').item.json.resumeUrl }}",
+              "type": "string"
+            },
+            {
+              "id": "07e2cc3b-babc-4931-895e-2ae4e136ce84",
+              "name": "Skills",
+              "value": "={{ $('Resume Parsing').item.json.output.skills }}",
+              "type": "string"
+            },
+            {
+              "id": "66f176fe-253d-476f-a06b-241b0bdf4cfd",
+              "name": "Profile Summary",
+              "value": "={{ $('Resume Parsing').item.json.output.profile_summary }}",
+              "type": "string"
+            },
+            {
+              "id": "6e036b53-7af1-4cfd-8bde-f9c57cd62338",
+              "name": "AI Score",
+              "value": "={{ $('Candidate Scoring').item.json.output.score }}",
+              "type": "number"
+            },
+            {
+              "id": "e3e1b923-1fa5-4013-9de7-0e4180beb12b",
+              "name": "Fit Reason",
+              "value": "={{ $('Candidate Scoring').item.json.output.fit_reason }}",
+              "type": "string"
+            },
+            {
+              "id": "727dc9aa-81cc-4430-a483-6cf897fc6f6f",
+              "name": "Status",
+              "value": "new",
+              "type": "string"
+            },
+            {
+              "id": "31b30127-4297-4690-9d6c-96c14e1422ce",
+              "name": "Submitted At",
+              "value": "={{ $('Clean Application').item.json.submittedAt }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1024,
+        256
+      ],
+      "id": "36e9c286-04ab-41af-9db8-d80130515bea",
+      "name": "Prepare Candidate Row"
+    }
+  ],
+  "connections": {
+    "New Application": {
+      "main": [
+        [
+          {
+            "node": "Clean Application",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Application": {
+      "main": [
+        [
+          {
+            "node": "Complete Application?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete Application?": {
+      "main": [
+        [
+          {
+            "node": "Find Existing Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert Incomplete Application",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Existing Candidate": {
+      "main": [
+        [
+          {
+            "node": "Already Applied?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Applied?": {
+      "main": [
+        [
+          {
+            "node": "Alert Duplicate Application",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download Resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Resume": {
+      "main": [
+        [
+          {
+            "node": "Extract Resume Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Resume Text": {
+      "main": [
+        [
+          {
+            "node": "Resume Parsing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Resume Parsing",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Candidate Scoring",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Candidate Email Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume Parsing": {
+      "main": [
+        [
+          {
+            "node": "Candidate Scoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Resume Parsing",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Candidate Scoring": {
+      "main": [
+        [
+          {
+            "node": "Prepare Candidate Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Requirements": {
+      "ai_tool": [
+        [
+          {
+            "node": "Candidate Scoring",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scoring Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Candidate Scoring",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Candidate to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Alert Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Team": {
+      "main": [
+        [
+          {
+            "node": "Candidate Email Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Candidate Email Generator": {
+      "main": [
+        [
+          {
+            "node": "Send Acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Candidate Email Generator",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Candidate Status Updated": {
+      "main": [
+        [
+          {
+            "node": "Shortlisted or Rejected?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shortlisted or Rejected?": {
+      "main": [
+        [
+          {
+            "node": "Status Email Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Status Email Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status Email Agent": {
+      "main": [
+        [
+          {
+            "node": "Draft Status Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status Email Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Status Email Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Availability": {
+      "ai_tool": [
+        [
+          {
+            "node": "Status Email Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Event": {
+      "ai_tool": [
+        [
+          {
+            "node": "Status Email Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Candidate Row": {
+      "main": [
+        [
+          {
+            "node": "Save Candidate to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "New Application": [
+      {
+        "headers": {
+          "content-type": "application/json"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "name": "SARAH MITCHELL",
+          "email": "Sarah.Mitchell@Example.com",
+          "role": "Cloud Specialist",
+          "resume_url": "https://raw.githubusercontent.com/Officiallb/automation-portfolio/main/02-ai-recruitment-screening/sample-resume.pdf"
+        },
+        "webhookUrl": "http://localhost:5678/webhook-test/new-application",
+        "executionMode": "test"
+      }
+    ],
+    "Candidate Status Updated": [
+      {
+        "Candidate Name": "Sarah Mitchell",
+        "Email": "sarah.mitchell@example.com",
+        "Role Applied For": "Cloud Specialist",
+        "Resume Link": "https://raw.githubusercontent.com/Officiallb/automation-portfolio/main/02-ai-recruitment-screening/sample-resume.pdf",
+        "Skills": "AWS, Azure, GCP, Terraform, Docker, Kubernetes, CI/CD, IAM, Prometheus, Grafana",
+        "Profile Summary": "Cloud Specialist with 7 years of experience designing and running cloud infrastructure.",
+        "AI Score": 9,
+        "Fit Reason": "Meets all required skills and most nice-to-have skills.",
+        "Status": "shortlisted",
+        "Submitted At": "2026-11-09T09:00:00.000+01:00",
+        "row_number": 2
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "name": "AI Recruitment Screening and Follow-up"
+}
