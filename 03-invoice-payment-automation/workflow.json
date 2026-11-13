@@ -1,0 +1,1555 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Consultation",
+        "formFields": {
+          "values": [
+            {
+              "fieldName": "Full Name",
+              "fieldLabel": "Full Name",
+              "requiredField": true
+            },
+            {
+              "fieldName": "Email Address",
+              "fieldLabel": "Email Address",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldName": "Company / Startup Name",
+              "fieldLabel": "Company / Startup Name"
+            },
+            {
+              "fieldName": "Service Type",
+              "fieldLabel": "Service Type",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "AI Strategy Call — ₦50,000"
+                  },
+                  {
+                    "option": "Workflow Automation Setup — ₦150,000"
+                  },
+                  {
+                    "option": "AI Agent Development — ₦300,000"
+                  },
+                  {
+                    "option": "Monthly AI Consulting — ₦500,000"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.4,
+      "position": [
+        96,
+        100
+      ],
+      "id": "dc2b3cb2-f2a8-4532-ad7a-5c0456c43000",
+      "name": "On form submission"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "540a43fb-2e58-42c0-9a3a-9ae8b25578d5",
+              "name": "client_name",
+              "value": "={{ ($json['Full Name'] ?? '').trim().toLowerCase().replace(/\\b\\w/g, c => c.toUpperCase()) }}",
+              "type": "string"
+            },
+            {
+              "id": "c9b28e43-fa58-4c39-b2e9-d30e61b8ffa7",
+              "name": "client_email",
+              "value": "={{ ($json['Email Address'] ?? '').trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "b1655458-cd40-4eb3-b902-935c613e9a58",
+              "name": "company",
+              "value": "={{ $json['Company / Startup Name'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "6d3ff4f0-f4af-4b44-9676-31d9ac5c1bfa",
+              "name": "service",
+              "value": "={{ $json['Service Type'].split(' — ₦')[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "2ac05de6-2099-4182-88bd-9c498331b0a0",
+              "name": "amount_naira",
+              "value": "={{ Number($json['Service Type'].split(' — ₦')[1].replace(/,/g, '')) }}",
+              "type": "number"
+            },
+            {
+              "id": "39b4914c-6f55-4767-a0a5-de48752045af",
+              "name": "unit_amount",
+              "value": "={{ Number($json['Service Type'].split(' — ₦')[1].replace(/,/g, '')) * 100 }}",
+              "type": "number"
+            },
+            {
+              "id": "bc992b47-140f-41cd-8653-e9bf7b96355d",
+              "name": "invoice_date",
+              "value": "={{ $now.toISODate() }}",
+              "type": "string"
+            },
+            {
+              "id": "47bf5d95-f4ac-4673-a1f7-cf15a90eff66",
+              "name": "due_date",
+              "value": "={{ $now.plus({ days: 7 }).toISODate() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        320,
+        100
+      ],
+      "id": "054c57d5-a79a-4750-b133-e101aeab72a9",
+      "name": "Prepare Invoice"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.stripe.com/v1/payment_links",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "line_items[0][price_data][currency]",
+              "value": "ngn"
+            },
+            {
+              "name": "line_items[0][price_data][product_data][name]",
+              "value": "={{ $json.service }}"
+            },
+            {
+              "name": "line_items[0][price_data][unit_amount]",
+              "value": "={{ $json.unit_amount }}"
+            },
+            {
+              "name": "line_items[0][quantity]",
+              "value": "1"
+            },
+            {
+              "name": "metadata[client_name]",
+              "value": "={{ $json.client_name }}"
+            },
+            {
+              "name": "metadata[service]",
+              "value": "={{ $json.service }}"
+            },
+            {
+              "name": "metadata[client_email]",
+              "value": "={{ $json.client_email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        544,
+        100
+      ],
+      "id": "64ff8263-ccb1-4afc-883d-34ef28ddd941",
+      "name": "Create Payment Link"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Invoice ID": "={{ $json.id }}",
+            "Client Name": "={{ $('Prepare Invoice').item.json.client_name }}",
+            "Email": "={{ $('Prepare Invoice').item.json.client_email }}",
+            "Service": "={{ $('Prepare Invoice').item.json.service }}",
+            "Amount": "={{ $('Prepare Invoice').item.json.amount_naira }}",
+            "Invoice Date": "={{ $('Prepare Invoice').item.json.invoice_date }}",
+            "Due Date": "={{ $('Prepare Invoice').item.json.due_date }}",
+            "Status": "pending",
+            "Payment Link": "={{ $json.url }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Invoice ID",
+              "displayName": "Invoice ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Client Name",
+              "displayName": "Client Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Service",
+              "displayName": "Service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Invoice Date",
+              "displayName": "Invoice Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Due Date",
+              "displayName": "Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Payment Link",
+              "displayName": "Payment Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Payment Date",
+              "displayName": "Payment Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment Method",
+              "displayName": "Payment Method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Amount Paid",
+              "displayName": "Amount Paid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Receipt No",
+              "displayName": "Receipt No",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        768,
+        100
+      ],
+      "id": "b90b436b-7c00-4417-9d56-e5b43acb4e28",
+      "name": "Save Invoice to Sheet"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Prepare Invoice').item.json.client_email }}",
+        "subject": "=Invoice for {{ $('Prepare Invoice').item.json.service }} - Payment Required",
+        "message": "=<div style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;\">\n  <h2 style=\"color: #0074d4;\">Invoice Ready</h2>\n  <p>Hello <strong>{{ $('Prepare Invoice').item.json.client_name }}</strong>,</p>\n\n  <p>Thank you for choosing <strong>Cubixco_LB</strong> for your {{ $('Prepare Invoice').item.json.service }} service. Your invoice is ready and payment is now due.</p>\n\n  <div style=\"background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;\">\n    <h4 style=\"margin-top: 0; border-bottom: 1px solid #ddd; padding-bottom: 5px;\">INVOICE DETAILS</h4>\n    <table style=\"width: 100%; border-collapse: collapse;\">\n      <tr>\n        <td style=\"padding: 5px 0;\"><strong>Service:</strong></td>\n        <td>{{ $('Prepare Invoice').item.json.service }}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 5px 0;\"><strong>Amount Due:</strong></td>\n        <td style=\"color: #2e7d32; font-weight: bold;\">₦{{ $('Prepare Invoice').item.json.amount_naira.toLocaleString('en-NG') }}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 5px 0;\"><strong>Due Date:</strong></td>\n        <td>{{ new Date($('Prepare Invoice').item.json.due_date).toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' }) }}</td>\n      </tr>\n    </table>\n  </div>\n\n  <div style=\"text-align: center; margin: 30px 0;\">\n    <a href=\"{{ $('Create Payment Link').item.json.url }}\"\n       style=\"background-color: #0074d4; color: white; padding: 14px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;\">\n       PAY INVOICE NOW\n    </a>\n  </div>\n\n  <p style=\"font-size: 12px; color: #777;\">\n    Please complete payment within 7 days to avoid service delays.<br>\n    Questions? Just reply to this email.\n  </p>\n\n  <hr style=\"border: 0; border-top: 1px solid #eee; margin: 20px 0;\">\n  <p style=\"font-size: 14px;\">Best regards,<br><strong>The Cubixco_LB Team</strong></p>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        992,
+        100
+      ],
+      "id": "cd9a73ec-9299-4874-b261-dddc136028a8",
+      "name": "Send Invoice Email"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        96,
+        932
+      ],
+      "id": "2850ba03-0cf1-478a-8df8-373a11325d3a",
+      "name": "Daily Overdue Check"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "pending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        320,
+        932
+      ],
+      "id": "82a03788-e78f-4bb9-b8ba-020baf039370",
+      "name": "Get Pending Invoices"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "64f403e2-ffb8-47b1-8cd7-a26783f8f6f3",
+              "leftValue": "={{ !!$json['Due Date'] && $json['Due Date'] < $today.toISODate() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        544,
+        932
+      ],
+      "id": "1c5f4567-8ea9-45ce-9063-6ca4a9ffe2d0",
+      "name": "Overdue?"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=Reminder: Invoice Overdue",
+        "emailType": "html",
+        "message": "=<div style=\"font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; padding: 25px; max-width: 500px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 12px;\">\n\n    <p style=\"margin-top: 0;\">Hello <strong>{{ $json['Client Name'] }}</strong>,</p>\n\n    <p>This is a gentle reminder that your invoice for <strong>{{ $json['Service'] }}</strong> is now overdue.</p>\n\n    <div style=\"background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin: 25px 0; border: 1px solid #edf0f2;\">\n        <p style=\"margin: 0 0 10px 0; font-size: 15px;\">\n            <span style=\"color: #666;\">Invoice Amount:</span> <br>\n            <strong style=\"font-size: 18px;\">₦{{ Number($json['Amount']).toLocaleString('en-NG') }}</strong>\n        </p>\n\n        <p style=\"margin: 0 0 20px 0; font-size: 15px;\">\n            <span style=\"color: #666;\">Due Date:</span> <br>\n            <strong style=\"color: #d9534f;\">{{ new Date($json['Due Date']).toLocaleDateString('en-NG') }}</strong>\n        </p>\n\n        <div style=\"text-align: center;\">\n            <a href=\"{{ $json['Payment Link'] }}\"\n               style=\"background-color: #007bff; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 16px;\">\n               Pay Invoice Now\n            </a>\n        </div>\n    </div>\n\n    <p style=\"font-size: 14px; color: #666;\">If you have already paid, please ignore this message.</p>\n\n    <div style=\"margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px; font-size: 14px; color: #444;\">\n        Thank you,<br>\n        <strong style=\"color: #000;\">Cubixco_LB</strong>\n    </div>\n\n</div>",
+        "options": {
+          "sendTo": "={{ $json.Email }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        768,
+        932
+      ],
+      "id": "73bcbf77-bcab-48df-a321-a2bc798531e8",
+      "name": "Draft Overdue Reminder"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "text": "=⚠️ Invoice Overdue\n\n👤 Client: {{ $('Overdue?').item.json['Client Name'] }}\n📧 Client Email: {{ $('Overdue?').item.json.Email }}\n🛠️ Service: {{ $('Overdue?').item.json.Service }}\n💰 Amount: ₦{{ Number($('Overdue?').item.json.Amount).toLocaleString('en-NG') }}\n📅 Due Date: {{ new Date($('Overdue?').item.json['Due Date']).toLocaleDateString('en-NG') }}\n----------------------------------",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        992,
+        932
+      ],
+      "id": "d9e15539-952e-49c7-a942-109eb3c0c91c",
+      "name": "Alert Team Overdue Invoice"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Invoice ID": "={{ $('Overdue?').item.json['Invoice ID'] }}",
+            "Status": "reminder sent"
+          },
+          "matchingColumns": [
+            "Invoice ID"
+          ],
+          "schema": [
+            {
+              "id": "Invoice ID",
+              "displayName": "Invoice ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Client Name",
+              "displayName": "Client Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Service",
+              "displayName": "Service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Invoice Date",
+              "displayName": "Invoice Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Due Date",
+              "displayName": "Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Payment Link",
+              "displayName": "Payment Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment Date",
+              "displayName": "Payment Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment Method",
+              "displayName": "Payment Method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Amount Paid",
+              "displayName": "Amount Paid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Receipt No",
+              "displayName": "Receipt No",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1216,
+        932
+      ],
+      "id": "cba14131-0c55-4af3-b82d-5880069887c1",
+      "name": "Mark Reminder Sent"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stripe-payment",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        96,
+        516
+      ],
+      "id": "ae8ad91c-5237-4dc4-9e7f-5d1549190301",
+      "name": "On New Payment"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "22524a6b-2a06-4e9c-b73f-ab68f8a3c743",
+              "name": "invoice_id",
+              "value": "={{ $json.body.data.object.payment_link }}",
+              "type": "string"
+            },
+            {
+              "id": "43a2cd13-96b5-4cca-9c54-8c509bf3ed22",
+              "name": "payment_intent",
+              "value": "={{ $json.body.data.object.payment_intent }}",
+              "type": "string"
+            },
+            {
+              "id": "84b07004-85e3-477a-9c8a-691ca61fc735",
+              "name": "client_name",
+              "value": "={{ $json.body.data.object.metadata?.client_name ?? $json.body.data.object.customer_details?.name ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "60d8d2ee-57f8-4863-b72b-d8361331050e",
+              "name": "client_email",
+              "value": "={{ $json.body.data.object.customer_details?.email ?? $json.body.data.object.metadata?.client_email ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "1b41db83-89a0-40e3-b393-e62b0391e80c",
+              "name": "service",
+              "value": "={{ $json.body.data.object.metadata?.service ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "4895819c-b880-447b-9b96-371107ec76b6",
+              "name": "amount_paid",
+              "value": "={{ $json.body.data.object.amount_total / 100 }}",
+              "type": "number"
+            },
+            {
+              "id": "ef258319-2a0c-4ef3-83be-61afd0277434",
+              "name": "payment_method",
+              "value": "={{ ($json.body.data.object.payment_method_types ?? []).join(', ') }}",
+              "type": "string"
+            },
+            {
+              "id": "545a0d7b-206a-4aa3-9904-8887a2ae51b5",
+              "name": "payment_date",
+              "value": "={{ new Date($json.body.data.object.created * 1000).toISOString().split('T')[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "1a7a910f-e870-47db-9783-6672c8efbbcd",
+              "name": "payment_date_long",
+              "value": "={{ new Date($json.body.data.object.created * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) }}",
+              "type": "string"
+            },
+            {
+              "id": "1e19a65e-250e-4f33-ba5b-e8f18b681893",
+              "name": "receipt_number",
+              "value": "={{ 'RCP-' + Date.now() + '-' + $json.body.data.object.id.slice(-6).toUpperCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "e38a6f55-c160-411b-bb57-bc6358d9a336",
+              "name": "dashboard_path",
+              "value": "={{ $json.body.livemode ? '' : 'test/' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        320,
+        516
+      ],
+      "id": "2446556d-af5c-45eb-85f0-89197ee53fcf",
+      "name": "Prepare Payment"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.stripe.com/v1/payment_intents/{{ $json.payment_intent }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        544,
+        516
+      ],
+      "id": "e146fbc6-da84-4bfa-98d7-6ae4686e49db",
+      "name": "Verify Payment With Stripe"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "2f512b90-87a7-43e2-90ca-f643fb670235",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "succeeded",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "succeeded"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "067e26e3-a172-4381-a15e-aef266ba0bf6",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "canceled",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "a7925223-e13b-4768-98bb-ec0beba67601",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "requires_payment_method",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "failed"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "96872858-dcfd-4fb1-bb10-f5787bc4f6e0",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "processing",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "95ca6316-a936-47c9-90cb-69ba7c1ff80a",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "requires_action",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "needs review"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        768,
+        500
+      ],
+      "id": "22e135b9-0da1-4045-8a38-1e7ae11a2db0",
+      "name": "Payment Status"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Invoice ID": "={{ $('Prepare Payment').item.json.invoice_id }}",
+            "Status": "paid",
+            "Payment Date": "={{ $('Prepare Payment').item.json.payment_date }}",
+            "Payment Method": "={{ $('Prepare Payment').item.json.payment_method }}",
+            "Amount Paid": "={{ $('Prepare Payment').item.json.amount_paid }}",
+            "Receipt No": "={{ $('Prepare Payment').item.json.receipt_number }}"
+          },
+          "matchingColumns": [
+            "Invoice ID"
+          ],
+          "schema": [
+            {
+              "id": "Invoice ID",
+              "displayName": "Invoice ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Client Name",
+              "displayName": "Client Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Service",
+              "displayName": "Service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Invoice Date",
+              "displayName": "Invoice Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Due Date",
+              "displayName": "Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Payment Link",
+              "displayName": "Payment Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment Date",
+              "displayName": "Payment Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Payment Method",
+              "displayName": "Payment Method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Amount Paid",
+              "displayName": "Amount Paid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Receipt No",
+              "displayName": "Receipt No",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        992,
+        324
+      ],
+      "id": "5ae21c1e-f42e-4a53-a4d4-8859eec39c06",
+      "name": "Mark Invoice Paid"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "text": "=✅ Payment Received\n\n👤 Client Name: {{ $('Prepare Payment').item.json.client_name }}\n📧 Email: {{ $('Prepare Payment').item.json.client_email }}\n🛠️ Service: {{ $('Prepare Payment').item.json.service }}\n💵 Amount Paid: ₦{{ $('Prepare Payment').item.json.amount_paid.toLocaleString('en-NG') }}\n💳 Payment Method: {{ $('Prepare Payment').item.json.payment_method }}\n🧾 Invoice / Payment Link ID: {{ $('Prepare Payment').item.json.invoice_id }}\n📅 Payment Date: {{ $('Prepare Payment').item.json.payment_date }}\n\nInvoice status has been updated to paid in the sheet.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1216,
+        324
+      ],
+      "id": "596aae4a-7295-4d06-921d-318ef0f578ea",
+      "name": "Alert Team Payment Received"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Prepare Payment').item.json.client_email }}",
+        "subject": "=Your Receipt - {{ $('Prepare Payment').item.json.receipt_number }}",
+        "message": "=<div style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;\">\n  <h2 style=\"color: #2e7d32;\">Payment Received</h2>\n  <p>Hello <strong>{{ $('Prepare Payment').item.json.client_name }}</strong>,</p>\n\n  <p>Thank you. We have received your payment and your invoice is now settled.</p>\n\n  <div style=\"background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;\">\n    <h4 style=\"margin-top: 0; border-bottom: 1px solid #ddd; padding-bottom: 5px;\">RECEIPT</h4>\n    <table style=\"width: 100%; border-collapse: collapse;\">\n      <tr>\n        <td style=\"padding: 5px 0;\"><strong>Receipt No:</strong></td>\n        <td>{{ $('Prepare Payment').item.json.receipt_number }}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 5px 0;\"><strong>Invoice ID:</strong></td>\n        <td>{{ $('Prepare Payment').item.json.invoice_id }}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 5px 0;\"><strong>Service:</strong></td>\n        <td>{{ $('Prepare Payment').item.json.service }}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 5px 0;\"><strong>Amount Paid:</strong></td>\n        <td style=\"color: #2e7d32; font-weight: bold;\">₦{{ $('Prepare Payment').item.json.amount_paid.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 5px 0;\"><strong>Payment Method:</strong></td>\n        <td>{{ $('Prepare Payment').item.json.payment_method }}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 5px 0;\"><strong>Payment Date:</strong></td>\n        <td>{{ $('Prepare Payment').item.json.payment_date_long }}</td>\n      </tr>\n    </table>\n  </div>\n\n  <p style=\"font-size: 12px; color: #777;\">Please keep this email for your records. Questions? Just reply to this email.</p>\n\n  <hr style=\"border: 0; border-top: 1px solid #eee; margin: 20px 0;\">\n  <p style=\"font-size: 14px;\">Best regards,<br><strong>The Cubixco_LB Team</strong></p>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        324
+      ],
+      "id": "0f3849f4-79fb-46c6-8826-e346840370e2",
+      "name": "Send Receipt"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Invoice ID": "={{ $('Prepare Payment').item.json.invoice_id }}",
+            "Status": "failed"
+          },
+          "matchingColumns": [
+            "Invoice ID"
+          ],
+          "schema": [
+            {
+              "id": "Invoice ID",
+              "displayName": "Invoice ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Client Name",
+              "displayName": "Client Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Service",
+              "displayName": "Service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Invoice Date",
+              "displayName": "Invoice Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Due Date",
+              "displayName": "Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Payment Link",
+              "displayName": "Payment Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment Date",
+              "displayName": "Payment Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Payment Method",
+              "displayName": "Payment Method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Amount Paid",
+              "displayName": "Amount Paid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Receipt No",
+              "displayName": "Receipt No",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        992,
+        516
+      ],
+      "id": "eb7d2197-e581-43a0-a76d-ec16ada204f0",
+      "name": "Mark Payment Failed"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "Failed Payment",
+        "message": "=Dear {{ $('Prepare Payment').item.json.client_name }},\n\nWe regret to inform you that your payment could not be processed.\n\nOrder Details:\n----------------------------------\nOrder ID: {{ $('Verify Payment With Stripe').item.json.id }}\nAmount: ₦{{ $('Prepare Payment').item.json.amount_paid.toLocaleString('en-NG') }}\nStatus: {{ $('Verify Payment With Stripe').item.json.status }}\nReason: {{ $('Verify Payment With Stripe').item.json.last_payment_error?.message || 'Payment could not be processed' }}\n\n----------------------------------\n\nPlease try again or contact our support team for assistance.\n\nBest regards,\nCubixco_LB",
+        "options": {
+          "sendTo": "={{ $('Prepare Payment').item.json.client_email }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1216,
+        516
+      ],
+      "id": "453a93b3-6886-4f32-be98-f12186962067",
+      "name": "Draft Failed Payment Email"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "text": "=⚠️ Payment Needs Manual Review\n\n👤 Client: {{ $('Prepare Payment').item.json.client_name }}\n📧 Email: {{ $('Prepare Payment').item.json.client_email }}\n🛠️ Service: {{ $('Prepare Payment').item.json.service }}\n💰 Amount: ₦{{ $('Prepare Payment').item.json.amount_paid.toLocaleString('en-NG') }}\n🧾 Payment Intent: {{ $('Prepare Payment').item.json.payment_intent }}\n📌 Stripe status: {{ $('Verify Payment With Stripe').item.json.status }}\n\n👉 Review in Stripe:\nhttps://dashboard.stripe.com/{{ $('Prepare Payment').item.json.dashboard_path }}payments/{{ $('Prepare Payment').item.json.payment_intent }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        992,
+        708
+      ],
+      "id": "a275ab26-89b2-4810-b023-b7553d61bf31",
+      "name": "Alert Team Needs Review"
+    }
+  ],
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Prepare Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Invoice": {
+      "main": [
+        [
+          {
+            "node": "Create Payment Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Payment Link": {
+      "main": [
+        [
+          {
+            "node": "Save Invoice to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Invoice to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Send Invoice Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Overdue Check": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Invoices": {
+      "main": [
+        [
+          {
+            "node": "Overdue?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Overdue?": {
+      "main": [
+        [
+          {
+            "node": "Draft Overdue Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Overdue Reminder": {
+      "main": [
+        [
+          {
+            "node": "Alert Team Overdue Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Team Overdue Invoice": {
+      "main": [
+        [
+          {
+            "node": "Mark Reminder Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On New Payment": {
+      "main": [
+        [
+          {
+            "node": "Prepare Payment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Payment": {
+      "main": [
+        [
+          {
+            "node": "Verify Payment With Stripe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Payment With Stripe": {
+      "main": [
+        [
+          {
+            "node": "Payment Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payment Status": {
+      "main": [
+        [
+          {
+            "node": "Mark Invoice Paid",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Payment Failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert Team Needs Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Invoice Paid": {
+      "main": [
+        [
+          {
+            "node": "Alert Team Payment Received",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Team Payment Received": {
+      "main": [
+        [
+          {
+            "node": "Send Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Payment Failed": {
+      "main": [
+        [
+          {
+            "node": "Draft Failed Payment Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "On form submission": [
+      {
+        "Full Name": "JANE DOE",
+        "Email Address": "jane.doe@example.com",
+        "Company / Startup Name": "Acme Studio",
+        "Service Type": "Workflow Automation Setup — ₦150,000",
+        "submittedAt": "2026-11-12T12:00:00.000+01:00",
+        "formMode": "test"
+      }
+    ],
+    "On New Payment": [
+      {
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "id": "evt_test_example0001",
+          "object": "event",
+          "created": 1794575137,
+          "livemode": false,
+          "type": "checkout.session.completed",
+          "data": {
+            "object": {
+              "id": "cs_test_exampleSession0001",
+              "object": "checkout.session",
+              "amount_total": 15000000,
+              "created": 1794575052,
+              "currency": "ngn",
+              "customer_details": {
+                "email": "jane.doe@example.com",
+                "name": "Jane Doe"
+              },
+              "metadata": {
+                "client_email": "jane.doe@example.com",
+                "client_name": "Jane Doe",
+                "service": "Workflow Automation Setup"
+              },
+              "mode": "payment",
+              "payment_intent": "pi_3ExampleFakePayment0001",
+              "payment_link": "plink_1ExampleFakeInvoice0001",
+              "payment_method_types": [
+                "card",
+                "link"
+              ],
+              "payment_status": "paid",
+              "status": "complete"
+            }
+          }
+        },
+        "webhookUrl": "http://localhost:5678/webhook-test/stripe-payment",
+        "executionMode": "test"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "name": "Invoice and Payment Automation"
+}

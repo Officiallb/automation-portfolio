@@ -1,0 +1,34 @@
+{
+  "id": "evt_test_example0001",
+  "object": "event",
+  "created": 1794575137,
+  "livemode": false,
+  "type": "checkout.session.completed",
+  "data": {
+    "object": {
+      "id": "cs_test_exampleSession0001",
+      "object": "checkout.session",
+      "amount_total": 15000000,
+      "created": 1794575052,
+      "currency": "ngn",
+      "customer_details": {
+        "email": "jane.doe@example.com",
+        "name": "Jane Doe"
+      },
+      "metadata": {
+        "client_email": "jane.doe@example.com",
+        "client_name": "Jane Doe",
+        "service": "Workflow Automation Setup"
+      },
+      "mode": "payment",
+      "payment_intent": "pi_3ExampleFakePayment0001",
+      "payment_link": "plink_1ExampleFakeInvoice0001",
+      "payment_method_types": [
+        "card",
+        "link"
+      ],
+      "payment_status": "paid",
+      "status": "complete"
+    }
+  }
+}
