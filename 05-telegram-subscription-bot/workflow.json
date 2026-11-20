@@ -1,0 +1,2100 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2432,
+        128
+      ],
+      "id": "fe27b984-85d4-4984-b56e-7324c3ea0d1d",
+      "name": "Daily Expiry Check (7AM)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "82eb7e0b-26e4-4017-9ed5-f7749cefcbdc",
+              "name": "bot_token",
+              "value": "YOUR_BOT_TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "59601138-b20e-42c2-b8e8-9ce24fd36d3b",
+              "name": "group_chat_id",
+              "value": "YOUR_PRIVATE_GROUP_CHAT_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2208,
+        128
+      ],
+      "id": "b5e86e3a-76b3-4c8d-9487-88ac43116e57",
+      "name": "Expiry Settings"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1984,
+        128
+      ],
+      "id": "5069b554-1ac2-4d5b-a463-7271487622ce",
+      "name": "Get Subscribers"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1aadc3f9-2bae-44cc-a489-0ec5c8469923",
+              "leftValue": "={{ !!$json['expiry date'] && $json['payment status'] !== 'Expired' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1760,
+        128
+      ],
+      "id": "f6c2e17e-c633-4784-af8d-4fee767de8fc",
+      "name": "Has Expiry Date?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5a2652a3-47a7-46df-9070-62f5c35b48a9",
+              "name": "daysLeft",
+              "value": "={{ Math.ceil((new Date($json['expiry date']).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1536,
+        128
+      ],
+      "id": "7707f5cb-42de-477f-a295-b85ad557fe45",
+      "name": "Calculate Days Left"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a7658c24-2321-4a43-9262-2b2a964a9542",
+                    "leftValue": "={{ $json.daysLeft }}",
+                    "rightValue": -1,
+                    "operator": {
+                      "type": "number",
+                      "operation": "lte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "expired"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "dda85cc4-7393-4cf8-90ff-f9c3065219ab",
+                    "leftValue": "={{ $json.daysLeft }}",
+                    "rightValue": 0,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "10de6c21-7a84-486f-b032-2dbcff4db093",
+                    "leftValue": "={{ $json.daysLeft }}",
+                    "rightValue": 2,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "ba89edcd-83e8-4ad6-9ae6-d971e255a4aa",
+                    "leftValue": "={{ $json.daysLeft }}",
+                    "rightValue": 3,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "reminder"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1312,
+        128
+      ],
+      "id": "f501fdbd-d86b-4abd-9d85-73cea57564fe",
+      "name": "Check Status"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "payment status": "Expired"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "username",
+              "displayName": "username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "plan",
+              "displayName": "plan",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "payment status",
+              "displayName": "payment status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date joined",
+              "displayName": "date joined",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "expiry date",
+              "displayName": "expiry date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1088,
+        32
+      ],
+      "id": "551d7df5-cb88-4119-8d06-a799b4fdd281",
+      "name": "Mark Expired"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $('Expiry Settings').first().json.bot_token }}/banChatMember",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $('Expiry Settings').first().json.group_chat_id }}\",\n  \"user_id\": \"{{ $('Calculate Days Left').item.json.user_id }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -864,
+        32
+      ],
+      "id": "0046ac35-3245-4a72-82d8-5bec40fd192d",
+      "name": "Ban From Group"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Calculate Days Left').item.json.user_id }}",
+        "text": "=❌ Your CineVault subscription has expired.\n\nTo continue watching, please renew your subscription.\nUse /plans to get started again.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        32
+      ],
+      "id": "5d11e51e-2fdb-405d-94fa-5f306591f96b",
+      "name": "Notify Expired"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.user_id }}",
+        "text": "={{ $json.daysLeft === 0 ? '🚨 Expires Today' : '⚠️ Subscription Reminder' }}\n\nHi {{ $json.username }}, your subscription {{ $json.daysLeft === 0 ? 'expires today' : 'will expire in ' + $json.daysLeft + ' days' }}.\n\nExpiry Date: {{ new Date($json['expiry date']).toLocaleDateString('en-GB') }}\n\n{{ $json.daysLeft === 0 ? 'Renew now to avoid losing access.' : 'To avoid interruption, please renew before it expires.' }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1088,
+        224
+      ],
+      "id": "735b09cb-26fc-4630-994b-3d979128de20",
+      "name": "Send Expiry Reminder"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "callback_query",
+          "message"
+        ],
+        "additionalFields": {
+          "download": false
+        }
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2432,
+        928
+      ],
+      "id": "7035d26f-4bf3-48a9-976a-782de7b59e3b",
+      "name": "Telegram Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "608b60dc-8307-445b-94a8-a5b689c366ef",
+              "name": "chat_id",
+              "value": "={{ $json.callback_query?.message?.chat?.id ?? $json.message?.chat?.id }}",
+              "type": "number"
+            },
+            {
+              "id": "fff67a5b-1c2b-4336-b59a-e5d22601dbf7",
+              "name": "username",
+              "value": "={{ $json.callback_query?.from?.username ?? $json.message?.from?.username ?? 'no_username' }}",
+              "type": "string"
+            },
+            {
+              "id": "74c80adf-1cc8-42d8-9228-fa5bf0671edf",
+              "name": "action",
+              "value": "={{ ($json.callback_query?.data ?? ($json.message?.photo ? 'photo' : ($json.message?.text ?? ''))).toString().trim().toLowerCase() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1984,
+        928
+      ],
+      "id": "1973d87b-d119-4b01-8c02-803fde53ff67",
+      "name": "Normalize Update"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7a08d906-5cda-4f86-ac22-4951cfa70707",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "/start",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "start"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b03a10cd-4d5e-4398-a734-a87aaac8cc65",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "view_plans",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "e4beabfd-e780-4b8f-a6eb-f387917c4719",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "/plans",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "plans"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b3d84598-81ff-44e6-a37e-30b38b01d976",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "payment_info",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "822c8e2e-9cd9-49e0-9c43-df69d33a2a06",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "/pay",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "pay"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "f0366708-ef97-4e4b-b104-f3a831f2c7ec",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "support",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "2e414862-328d-42ce-a45c-1cdb3f18b15f",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "/support",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "support"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7612d648-5ed8-4fe6-aa80-93e45040923e",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "/status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "status"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "44816c09-f4a5-4cbc-9841-a697c79f116c",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "subscribe_1_month",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "4d677708-3407-4a60-b2a2-916de3f6eb91",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "subscribe_1_year",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "subscribe"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "038e5954-8720-4286-83b1-8fff844de811",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "photo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "payment screenshot"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1760,
+        928
+      ],
+      "id": "cc60eec1-928c-4284-a1e3-222b73898f1a",
+      "name": "Route Action"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "=👋 Welcome to CineVault\nYour private movie subscription hub.",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🎬 View Plans",
+                    "additionalFields": {
+                      "callback_data": "view_plans"
+                    }
+                  },
+                  {
+                    "text": "💳 Payment Instructions",
+                    "additionalFields": {
+                      "callback_data": "payment_info"
+                    }
+                  },
+                  {
+                    "text": "📞 Support",
+                    "additionalFields": {
+                      "callback_data": "support"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1424,
+        592
+      ],
+      "id": "fb77d86a-91d3-46b5-8448-02d83a122d93",
+      "name": "Send Welcome Message"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "=📆 1 Month – ₦5,000\n📆 1 Year – ₦50,000 (discounted)",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Subscribe 1 Month",
+                    "additionalFields": {
+                      "callback_data": "subscribe_1_month"
+                    }
+                  },
+                  {
+                    "text": "Subscribe 1 Year",
+                    "additionalFields": {
+                      "callback_data": "subscribe_1_year"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1440,
+        752
+      ],
+      "id": "93c37c13-cc31-4dce-acd4-b5f2e4a3377d",
+      "name": "Show Subscription Plans"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "=Please select a plan first\n📆 1 Month – ₦5,000\n📆 1 Year – ₦50,000 (discounted)",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Subscribe 1 Month",
+                    "additionalFields": {
+                      "callback_data": "subscribe_1_month"
+                    }
+                  },
+                  {
+                    "text": "Subscribe 1 Year",
+                    "additionalFields": {
+                      "callback_data": "subscribe_1_year"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1440,
+        912
+      ],
+      "id": "3ad205c1-9122-41c5-9908-9a14e4a7a853",
+      "name": "Prompt Plan Selection"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "=📞 Support\n\nNeed help? We’ve got you.\n\nIf you’re having issues with payment, access, or anything else, reach out below:\n\n👤 Admin: @your_support_username\n\nWe’ll get back to you as soon as possible.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1440,
+        1072
+      ],
+      "id": "ef5a1a64-46ef-4476-9dcb-7075025713da",
+      "name": "Send Support Contact"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "user_id",
+              "lookupValue": "={{ $('Normalize Update').first().json.chat_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1440,
+        1232
+      ],
+      "id": "2a955bb5-e0f0-4377-a0ee-c3ec91a0f3bd",
+      "name": "Find Subscriber (Status)",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "214f505c-8d9c-4572-b975-a26752fb0bf4",
+              "leftValue": "={{ !!$json.user_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1216,
+        1232
+      ],
+      "id": "f8638e99-25a8-4d37-a9f8-a11f4cb5d6c6",
+      "name": "Has Subscription?"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Normalize Update').first().json.chat_id }}",
+        "text": "=📊 Your Subscription Status\n\n📦 Plan: {{ $json.plan === 'subscribe_1_month' ? '1 Month' : '1 Year' }}\n\n📅 Start Date: {{ $json['date joined'] ? new Date($json['date joined']).toLocaleDateString('en-GB') : 'Not started yet' }}\n\n⏳ Expiry Date: {{ $json['expiry date'] ? new Date($json['expiry date']).toLocaleDateString('en-GB') : 'Not started yet' }}\n\n━━━━━━━━━━━━━━━\nStatus: {{ $json['payment status'] }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -992,
+        1152
+      ],
+      "id": "d7a7bcaf-4f5e-4346-8955-0209031cdd40",
+      "name": "Show Subscription Details"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Normalize Update').first().json.chat_id }}",
+        "text": "=📊 Your Subscription Status\n\nNo subscription found. Use /plans to get started.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -992,
+        1312
+      ],
+      "id": "2b3b1e5e-3660-4c91-9d09-d824c314f899",
+      "name": "Show No Subscription"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "user_id",
+              "lookupValue": "={{ $('Normalize Update').first().json.chat_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1440,
+        1472
+      ],
+      "id": "d4be4766-85ee-48ec-becb-a257dbf6b0d7",
+      "name": "Find Subscriber (Subscribe)",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "097863c3-d03d-42b8-83fd-b6601de6c3e0",
+              "leftValue": "={{ !!$json.user_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1216,
+        1472
+      ],
+      "id": "6078321d-885c-4dc2-91ff-3f733be4a401",
+      "name": "Already In Sheet?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "plan": "={{ $('Normalize Update').first().json.action }}",
+            "payment status": "Pending"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "username",
+              "displayName": "username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "plan",
+              "displayName": "plan",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "payment status",
+              "displayName": "payment status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date joined",
+              "displayName": "date joined",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "expiry date",
+              "displayName": "expiry date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -928,
+        1456
+      ],
+      "id": "af230540-b506-4700-a696-ae408884dd37",
+      "name": "Update Plan Request"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id": "={{ $('Normalize Update').first().json.chat_id }}",
+            "username": "={{ $('Normalize Update').first().json.username }}",
+            "payment status": "Pending",
+            "plan": "={{ $('Normalize Update').first().json.action }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "username",
+              "displayName": "username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "plan",
+              "displayName": "plan",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "payment status",
+              "displayName": "payment status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date joined",
+              "displayName": "date joined",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "expiry date",
+              "displayName": "expiry date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -960,
+        1616
+      ],
+      "id": "9ebc3f3a-8c17-4d9b-aa96-f9a639ee338e",
+      "name": "Add Subscriber"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Normalize Update').first().json.chat_id }}",
+        "text": "=💳 Pay to the account below:\n\nBank: Example Bank\nAccount Number: 0000000000\nAccount Name: CineVault Demo\nAmount: based on plan selected\n\n⚠️ Important note:\n\nAfter payment, send screenshot here for confirmation.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -592,
+        1488
+      ],
+      "id": "5ff33365-7192-4eb2-8b71-c4a71f10e71d",
+      "name": "Send Bank Details"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.photo[$json.message.photo.length - 1].file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1440,
+        1728
+      ],
+      "id": "b01ead95-3955-43b5-b0ab-b3022fe52433",
+      "name": "Get Screenshot File"
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Bot Settings').first().json.admin_chat_id }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "=Payment screenshot from @{{ $('Normalize Update').first().json.username }}",
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1216,
+        1728
+      ],
+      "id": "78c4e4ab-9bec-446c-9cef-cca8aabcce43",
+      "name": "Forward Screenshot To Admin"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "user_id",
+              "lookupValue": "={{ $('Normalize Update').first().json.chat_id }}"
+            },
+            {
+              "lookupColumn": "payment status",
+              "lookupValue": "Pending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -992,
+        1728
+      ],
+      "id": "c22079ba-f510-4c22-9c73-0943121a6e70",
+      "name": "Find Pending Payment"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "chatId": "={{ $('Bot Settings').first().json.admin_chat_id }}",
+        "message": "=💰 New Payment Submission\n\n🆔 User ID: {{ $json.user_id }}\n📦 Plan: {{ $json.plan.replace(/_/g, ' ') }}\n📊 Status: {{ $json['payment status'] }}\n\n🕒 Submitted: {{ new Date().toLocaleString() }}\n\n━━━━━━━━━━━━━━━\nPlease review the screenshot above and confirm:\n",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double"
+          }
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -768,
+        1728
+      ],
+      "id": "69f667ee-86db-4a98-9fb9-949557b7dec7",
+      "name": "Ask Admin To Approve"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e6790485-893f-4973-a3c4-e2e1a502f1fb",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -544,
+        1728
+      ],
+      "id": "f3943d39-51cc-4f57-8831-ccb93f55a5db",
+      "name": "Approved?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $('Find Pending Payment').item.json.row_number }}",
+            "payment status": "Paid",
+            "date joined": "={{ new Date().toISOString() }}",
+            "expiry date": "={{ $('Find Pending Payment').item.json.plan === 'subscribe_1_month' ? new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString() : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString() }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "username",
+              "displayName": "username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "plan",
+              "displayName": "plan",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "payment status",
+              "displayName": "payment status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date joined",
+              "displayName": "date joined",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "expiry date",
+              "displayName": "expiry date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -320,
+        1648
+      ],
+      "id": "ae35499d-d219-4315-868b-bdd42805de9c",
+      "name": "Mark Paid"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $('Bot Settings').first().json.bot_token }}/unbanChatMember",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $('Bot Settings').first().json.group_chat_id }}\",\n  \"user_id\": \"{{ $('Find Pending Payment').item.json.user_id }}\",\n  \"only_if_banned\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -96,
+        1648
+      ],
+      "id": "b2f6b03a-cd51-4dd7-9a92-e6016eeef10b",
+      "name": "Restore Group Access"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $('Bot Settings').first().json.bot_token }}/createChatInviteLink",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $('Bot Settings').first().json.group_chat_id }}\",\n  \"member_limit\": 1,\n  \"expire_date\": {{ Math.floor(Date.now() / 1000) + 3600 }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        144,
+        1648
+      ],
+      "id": "709e1af8-b712-4024-a20b-4de69a7c07f7",
+      "name": "Create One-Time Invite Link"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Normalize Update').first().json.chat_id }}",
+        "text": "=✅ Payment Confirmed!\n\nHere is your access link:\n{{ $json.result.invite_link }}\n\n⚠️ This link expires in 1 hour and can only be used once.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        1648
+      ],
+      "id": "95fcf52b-7f07-47db-aed1-8dd5597a66ba",
+      "name": "Send Access Link"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $('Find Pending Payment').item.json.row_number }}",
+            "payment status": "Not Valid"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "username",
+              "displayName": "username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "plan",
+              "displayName": "plan",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "payment status",
+              "displayName": "payment status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date joined",
+              "displayName": "date joined",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "expiry date",
+              "displayName": "expiry date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -320,
+        1824
+      ],
+      "id": "43f42c4d-2a0a-4868-9541-d48b4bd341d3",
+      "name": "Mark Not Valid"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Normalize Update').first().json.chat_id }}",
+        "text": "=❌ Payment could not be verified.\nPlease retry or contact support.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -96,
+        1824
+      ],
+      "id": "d76a3468-d203-434d-9cd6-6726d77b8ddd",
+      "name": "Send Rejection"
+    },
+    {
+      "parameters": {
+        "content": "## Flow 1: Subscription expiry\nRuns every day at 7am. Reminds subscribers 3 days, 2 days and 0 days before expiry. After expiry it marks the row Expired, removes the user from the private group and tells them.",
+        "height": 520,
+        "width": 2160,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2512,
+        -96
+      ],
+      "id": "04f3b878-fd49-4d14-a921-d6f48222b3eb",
+      "name": "Note: Flow 1"
+    },
+    {
+      "parameters": {
+        "content": "## Flow 2a: Customer commands and plan selection\nHandles /start, /plans, /pay, /support, /status and the inline buttons. Choosing a plan adds or updates the subscriber row as Pending and sends the bank details.",
+        "height": 1160,
+        "width": 1960,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2496,
+        512
+      ],
+      "id": "c531666b-f888-4627-9a99-7fff9271ca1a",
+      "name": "Note: Flow 2a"
+    },
+    {
+      "parameters": {
+        "content": "## Flow 2b: Payment proof and admin approval\nA photo from the customer is sent to the admin with Approve and Disapprove buttons. Approved: row marked Paid with an expiry date, user unbanned and sent a one-time invite link. Not approved: row marked Not Valid.",
+        "height": 320,
+        "width": 2020,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1472,
+        1664
+      ],
+      "id": "d7c87131-2f3f-439e-bdff-75c172e43c32",
+      "name": "Note: Flow 2b"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3ececfcd-e951-420e-b081-220366686f72",
+              "name": "bot_token",
+              "value": "YOUR_BOT_TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "20b68337-3f86-4359-8e71-ff0d949c4e07",
+              "name": "group_chat_id",
+              "value": "YOUR_PRIVATE_GROUP_CHAT_ID",
+              "type": "string"
+            },
+            {
+              "id": "532833a6-8a4c-4605-b65a-ad70305eceb6",
+              "name": "admin_chat_id",
+              "value": "YOUR_ADMIN_CHAT_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2208,
+        928
+      ],
+      "id": "2b1342b6-2c11-49ec-880d-09c5d949adaf",
+      "name": "Bot Settings"
+    }
+  ],
+  "connections": {
+    "Daily Expiry Check (7AM)": {
+      "main": [
+        [
+          {
+            "node": "Expiry Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expiry Settings": {
+      "main": [
+        [
+          {
+            "node": "Get Subscribers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Subscribers": {
+      "main": [
+        [
+          {
+            "node": "Has Expiry Date?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Expiry Date?": {
+      "main": [
+        [
+          {
+            "node": "Calculate Days Left",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Days Left": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status": {
+      "main": [
+        [
+          {
+            "node": "Mark Expired",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Expiry Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Expired": {
+      "main": [
+        [
+          {
+            "node": "Ban From Group",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ban From Group": {
+      "main": [
+        [
+          {
+            "node": "Notify Expired",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Bot Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Update": {
+      "main": [
+        [
+          {
+            "node": "Route Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Action": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Show Subscription Plans",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prompt Plan Selection",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Support Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find Subscriber (Status)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find Subscriber (Subscribe)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Screenshot File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Subscriber (Status)": {
+      "main": [
+        [
+          {
+            "node": "Has Subscription?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Subscription?": {
+      "main": [
+        [
+          {
+            "node": "Show Subscription Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Show No Subscription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Subscriber (Subscribe)": {
+      "main": [
+        [
+          {
+            "node": "Already In Sheet?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already In Sheet?": {
+      "main": [
+        [
+          {
+            "node": "Update Plan Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add Subscriber",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Plan Request": {
+      "main": [
+        [
+          {
+            "node": "Send Bank Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Subscriber": {
+      "main": [
+        [
+          {
+            "node": "Send Bank Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Screenshot File": {
+      "main": [
+        [
+          {
+            "node": "Forward Screenshot To Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Forward Screenshot To Admin": {
+      "main": [
+        [
+          {
+            "node": "Find Pending Payment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Pending Payment": {
+      "main": [
+        [
+          {
+            "node": "Ask Admin To Approve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask Admin To Approve": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Mark Paid",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Not Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Paid": {
+      "main": [
+        [
+          {
+            "node": "Restore Group Access",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Group Access": {
+      "main": [
+        [
+          {
+            "node": "Create One-Time Invite Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create One-Time Invite Link": {
+      "main": [
+        [
+          {
+            "node": "Send Access Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Not Valid": {
+      "main": [
+        [
+          {
+            "node": "Send Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bot Settings": {
+      "main": [
+        [
+          {
+            "node": "Normalize Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Telegram Trigger": [
+      {
+        "update_id": 100000001,
+        "message": {
+          "message_id": 1,
+          "from": {
+            "id": 123456789,
+            "is_bot": false,
+            "first_name": "Jane",
+            "username": "jane_demo",
+            "language_code": "en"
+          },
+          "chat": {
+            "id": 123456789,
+            "first_name": "Jane",
+            "username": "jane_demo",
+            "type": "private"
+          },
+          "date": 1794580000,
+          "text": "/start"
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "name": "Telegram Subscription Bot"
+}
