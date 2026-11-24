@@ -18,31 +18,31 @@ The example business is a fake roofing company (LB Roofing). The agent is built 
 ## How it works
 
 ```mermaid
-flowchart LR
-    subgraph F1["Flow 1: Call new leads"]
-        A["Manual run"] --> B["Config"]
-        B --> C["Get Leads<br/>status = Not Called"]
-        C --> D["Pick Leads<br/>validate phone, cap calls"]
-        D --> E["Loop Over Leads"]
-        E --> F["Call Lead<br/>Retell API"]
-        F --> G["Mark Calling"]
-        G --> H["Wait"]
-        H --> E
+flowchart TD
+    subgraph A["Flow 1: Call new leads"]
+        A1["Manual run"] --> A2["Config"]
+        A2 --> A3["Get Leads: status is Not Called"]
+        A3 --> A4["Pick Leads: validate phone, cap calls"]
+        A4 --> A5["Loop Over Leads"]
+        A5 --> A6["Call Lead: Retell API"]
+        A6 --> A7["Mark Calling"]
+        A7 --> A8["Wait"]
+        A8 --> A5
     end
-
-    F -. "phone call" .-> V(["Maya, Retell voice agent"])
-    V <--> K[("Cal.com<br/>availability and booking")]
-    V -. "call_analyzed webhook" .-> W
-
-    subgraph F2["Flow 2: Post-call update"]
-        W["Webhook"] --> X{"Only call_analyzed"}
-        X --> Y["Extract Call Data"]
-        Y --> S["Save Call Summary"]
-        Y --> Z{"Has lead_id"}
-        Z -- yes --> FL["Find Lead"]
-        FL --> BU["Build Lead Update"]
-        BU --> UL["Update Lead"]
+    subgraph V["Retell and Cal.com"]
+        V1["Maya, the voice agent, phones the lead"] <--> V2["Cal.com: check availability and book"]
     end
+    subgraph B["Flow 2: Post-call update"]
+        B1["Webhook"] --> B2{"Only call_analyzed"}
+        B2 --> B3["Extract Call Data"]
+        B3 --> B4["Save Call Summary"]
+        B3 --> B5{"Has lead_id"}
+        B5 -- yes --> B6["Find Lead"]
+        B6 --> B7["Build Lead Update"]
+        B7 --> B8["Update Lead"]
+    end
+    A6 --> V1
+    V1 --> B1
 ```
 
 ## The agent
