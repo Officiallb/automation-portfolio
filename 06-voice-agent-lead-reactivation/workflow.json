@@ -1,0 +1,941 @@
+{
+  "name": "Voice Agent Lead Reactivation",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "fd2ae503-b995-4f07-a903-5ebedf7a3849",
+      "name": "When clicking 'Execute workflow'"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d8819c39-47ea-4ee8-af5c-77700b07721b",
+              "name": "from_number",
+              "value": "+REPLACE_WITH_YOUR_RETELL_NUMBER",
+              "type": "string"
+            },
+            {
+              "id": "0baadaa7-198c-4487-911c-ac3be9396bd4",
+              "name": "agent_id",
+              "value": "REPLACE_WITH_YOUR_RETELL_AGENT_ID",
+              "type": "string"
+            },
+            {
+              "id": "4c2f1030-cbc4-4a61-adc3-3f1bb086314e",
+              "name": "max_calls",
+              "value": 1,
+              "type": "number"
+            },
+            {
+              "id": "5e0b4506-2cd7-42c6-9cec-53197ab250b9",
+              "name": "wait_seconds",
+              "value": 30,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "a757e054-e95e-41c4-9b15-edf1eb29104e",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "Not Called"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        432,
+        0
+      ],
+      "id": "cb1b230d-c857-44a7-9505-ddf6d5a535a7",
+      "name": "Get Leads",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config').first().json;\nconst s = (v) => (v === undefined || v === null) ? '' : String(v).trim();\n\nif (!s(cfg.from_number).startsWith('+') || s(cfg.from_number).includes('REPLACE')) {\n  throw new Error('Set from_number (your Retell number, E.164) in the Config node first');\n}\n\nconst max = Number(cfg.max_calls) || 1;\nconst validPhone = (p) => p.length >= 9 && p.startsWith('+') && [...p.slice(1)].every(c => c >= '0' && c <= '9');\n\nconst out = [];\nfor (const item of $input.all()) {\n  const r = item.json;\n  const phone = s(r.phone_number);\n  if (!s(r.lead_id) || !validPhone(phone)) continue;\n  if (s(r.status) !== 'Not Called') continue;\n\n  // Every dynamic variable must be a string for Retell\n  out.push({\n    json: {\n      lead_id: s(r.lead_id),\n      phone_number: phone,\n      request_body: {\n        from_number: s(cfg.from_number),\n        to_number: phone,\n        override_agent_id: s(cfg.agent_id),\n        retell_llm_dynamic_variables: {\n          lead_id: s(r.lead_id),\n          customer_name: s(r.customer_name),\n          customer_phone: phone,\n          lead_source: s(r.lead_source),\n          lead_details: s(r.lead_details),\n          property_address: s(r.property_address)\n        },\n        metadata: { lead_id: s(r.lead_id) }\n      }\n    }\n  });\n  if (out.length >= max) break;\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        0
+      ],
+      "id": "b94a68f0-64b1-4527-a012-a3abb6d9929f",
+      "name": "Pick Leads"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        864,
+        0
+      ],
+      "id": "8297116e-6057-436f-8939-99c63721c31b",
+      "name": "Loop Over Leads"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.retellai.com/v2/create-phone-call",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request_body) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1104,
+        64
+      ],
+      "id": "097f1a38-896c-41d4-a60f-2a95f57f7e32",
+      "name": "Call Lead"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_id": "={{ $('Loop Over Leads').item.json.lead_id }}",
+            "status": "Calling"
+          },
+          "matchingColumns": [
+            "lead_id"
+          ],
+          "schema": [
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1344,
+        64
+      ],
+      "id": "9a11e2e7-16c4-4d46-a481-2eac72139649",
+      "name": "Mark Calling",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "amount": "={{ $('Config').first().json.wait_seconds }}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1568,
+        64
+      ],
+      "id": "cd46cea5-afcc-4dde-9040-5018bf9a34fb",
+      "name": "Wait"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "retell-post-call",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        616
+      ],
+      "id": "5cebb1ba-9deb-4b16-b857-aff2d15625d0",
+      "name": "Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b2db0d1e-2dbb-4d27-8fbd-5726f5aa02e8",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "call_analyzed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        616
+      ],
+      "id": "2380312c-92c5-4f0f-90e1-7b223c97afa1",
+      "name": "Only call_analyzed"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst call = body.call || {};\nconst analysis = call.call_analysis || {};\nconst custom = analysis.custom_analysis_data || {};\nconst vars = Object.assign({}, call.collected_dynamic_variables, call.retell_llm_dynamic_variables);\n\n// One timezone for the call date. Change it here only.\nconst TZ = 'America/New_York';\n\nconst clean = (v) => (v === undefined || v === null) ? '' : String(v).trim();\n\nconst start = call.start_timestamp ? DateTime.fromMillis(call.start_timestamp).setZone(TZ) : null;\nconst ms = call.duration_ms || 0;\nconst cents = (call.call_cost && call.call_cost.combined_cost) || 0;\n\nreturn [{\n  json: {\n    event: body.event || '',\n    call_id: clean(call.call_id),\n    call_status: clean(call.call_status),\n    disconnection_reason: clean(call.disconnection_reason),\n    // lead_id comes back from the dynamic variables (batch CSV or API), or from metadata (API only)\n    lead_id: clean(vars.lead_id) || clean((call.metadata || {}).lead_id),\n    phone: clean(call.to_number) || clean(vars.customer_phone) || clean(vars.phone_number),\n    date: start ? start.toFormat('LLL dd, yyyy HH:mm:ss') : '',\n    last_call_date: start ? start.toFormat('yyyy-LL-dd') : '',\n    duration: Math.floor(ms / 60000) + 'm ' + Math.floor((ms % 60000) / 1000) + 's',\n    cost: (cents / 100).toFixed(3),\n    recording: clean(call.recording_url),\n    call_summary: clean(analysis.call_summary),\n    call_successful: analysis.call_successful === undefined ? '' : String(analysis.call_successful),\n    user_sentiment: clean(analysis.user_sentiment),\n    outcome: clean(custom.outcome),\n    still_interested: clean(custom.still_interested),\n    roof_issue: clean(custom.roof_issue),\n    alternate_phone_number: clean(custom.alternate_phone_number),\n    updated_customer_name: clean(custom.updated_customer_name),\n    updated_property_address: clean(custom.updated_property_address),\n    booking_note: clean(custom.booking_note)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        600
+      ],
+      "id": "407e92db-09b5-4191-87aa-ab60ea854cfa",
+      "name": "Extract Call Data"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.date }}",
+            "Phone Number": "={{ $json.phone }}",
+            "Call Summary": "={{ $json.call_summary }}",
+            "Call Successfull": "={{ $json.call_successful }}",
+            "User Sentiment": "={{ $json.user_sentiment }}",
+            "Disconnection Reason": "={{ $json.disconnection_reason }}",
+            "Duration": "={{ $json.duration }}",
+            "Call Status": "={{ $json.call_status }}",
+            "Call ID": "={{ $json.call_id }}",
+            "Cost": "={{ $json.cost }}",
+            "Recording": "={{ $json.recording }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Call Summary",
+              "displayName": "Call Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Call Successfull",
+              "displayName": "Call Successfull",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "User Sentiment",
+              "displayName": "User Sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Disconnection Reason",
+              "displayName": "Disconnection Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Duration",
+              "displayName": "Duration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Call Status",
+              "displayName": "Call Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Call ID",
+              "displayName": "Call ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Cost",
+              "displayName": "Cost",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Recording",
+              "displayName": "Recording",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "useAppend": false
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        456
+      ],
+      "id": "5a3e8802-8cd6-45ef-a974-4de40f9bc150",
+      "name": "Save Call Summary",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dacf2e90-fd8b-4402-bd9d-b70e05dbd3b8",
+              "leftValue": "={{ $json.lead_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        776
+      ],
+      "id": "176e75ff-d878-4093-81f0-60c39b2d9e17",
+      "name": "Has lead_id"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "lead_id",
+              "lookupValue": "={{ $json.lead_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        896,
+        776
+      ],
+      "id": "9e2e8a89-a167-44cb-93ba-89cb6de74fb9",
+      "name": "Find Lead",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const call = $('Extract Call Data').first().json;\nconst row = $input.first().json;\n\nconst keep = (updated, current) => {\n  const u = (updated === undefined || updated === null) ? '' : String(updated).trim();\n  return u ? u : ((current === undefined || current === null) ? '' : String(current));\n};\n\n// Turn a spoken phone number into +international format. Returns '' when it can't be trusted,\n// in which case the original phone_number stays.\nconst toE164 = (raw) => {\n  const p = (raw === undefined || raw === null) ? '' : String(raw).trim();\n  if (!p) return '';\n  const digits = [...p].filter(c => c >= '0' && c <= '9').join('');\n  if (p.startsWith('+')) return (digits.length >= 8 && digits.length <= 15) ? '+' + digits : '';\n  if (digits.length === 10) return '+1' + digits;                       // assumes a US number\n  if (digits.length === 11 && digits.startsWith('1')) return '+' + digits;\n  return '';\n};\n\n// New value from the call replaces the old one; otherwise the old one stays\nreturn [{\n  json: {\n    lead_id: call.lead_id,\n    customer_name: keep(call.updated_customer_name, row.customer_name),\n    phone_number: toE164(call.alternate_phone_number) || keep('', row.phone_number),\n    property_address: keep(call.updated_property_address, row.property_address),\n    status: 'Called',\n    last_call_date: call.last_call_date,\n    still_interested: keep(call.still_interested, row.still_interested),\n    outcome: keep(call.outcome, row.outcome),\n    roof_issue: keep(call.roof_issue, row.roof_issue),\n    booking_note: keep(call.booking_note, row.booking_note),\n    call_summary: keep(call.call_summary, row.call_summary)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        776
+      ],
+      "id": "deaf6244-c0c9-4dcb-89ff-14dd27f2c27e",
+      "name": "Build Lead Update"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_id": "={{ $json.lead_id }}",
+            "customer_name": "={{ $json.customer_name }}",
+            "phone_number": "={{ $json.phone_number }}",
+            "property_address": "={{ $json.property_address }}",
+            "status": "={{ $json.status }}",
+            "last_call_date": "={{ $json.last_call_date }}",
+            "still_interested": "={{ $json.still_interested }}",
+            "outcome": "={{ $json.outcome }}",
+            "roof_issue": "={{ $json.roof_issue }}",
+            "booking_note": "={{ $json.booking_note }}",
+            "call_summary": "={{ $json.call_summary }}"
+          },
+          "matchingColumns": [
+            "lead_id"
+          ],
+          "schema": [
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "phone_number",
+              "displayName": "phone_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "property_address",
+              "displayName": "property_address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "last_call_date",
+              "displayName": "last_call_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "still_interested",
+              "displayName": "still_interested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "outcome",
+              "displayName": "outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "roof_issue",
+              "displayName": "roof_issue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "booking_note",
+              "displayName": "booking_note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "call_summary",
+              "displayName": "call_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1344,
+        776
+      ],
+      "id": "a72e7e14-3c8d-4f3c-bc02-d37185e54029",
+      "name": "Update Lead",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "content": "## Flow 1: Call new leads\nRun manually. Reads leads with status Not Called, checks the phone number, starts a Retell call to up to max_calls leads, marks each one Calling and waits between calls.",
+        "height": 420,
+        "width": 1760,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -176
+      ],
+      "id": "db91ade8-becd-4b3f-a818-3bbafd3fbdff",
+      "name": "Flow 1 label"
+    },
+    {
+      "parameters": {
+        "content": "## Flow 2: Post-call update\nRetell sends call_analyzed to this webhook after each call. The call is saved to the Call Summary tab and the lead's row in the Leads tab gets the outcome, booking note and status Called.",
+        "height": 520,
+        "width": 1760,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        330
+      ],
+      "id": "69933c47-9bcc-4709-a740-33bc14c8e034",
+      "name": "Flow 2 label"
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Get Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Leads": {
+      "main": [
+        [
+          {
+            "node": "Pick Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Leads": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Leads": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Call Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Lead": {
+      "main": [
+        [
+          {
+            "node": "Mark Calling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Calling": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Only call_analyzed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only call_analyzed": {
+      "main": [
+        [
+          {
+            "node": "Extract Call Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Call Data": {
+      "main": [
+        [
+          {
+            "node": "Save Call Summary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Has lead_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has lead_id": {
+      "main": [
+        [
+          {
+            "node": "Find Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Find Lead": {
+      "main": [
+        [
+          {
+            "node": "Build Lead Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Lead Update": {
+      "main": [
+        [
+          {
+            "node": "Update Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "When clicking 'Execute workflow'": [
+      {
+        "json": {},
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "content-type": "application/json"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "event": "call_analyzed",
+            "call": {
+              "call_id": "call_sample_0001",
+              "call_type": "phone_call",
+              "agent_name": "LB Roofing - Lead Reactivation (Maya)",
+              "call_status": "ended",
+              "start_timestamp": 1795427996000,
+              "end_timestamp": 1795428065000,
+              "duration_ms": 69000,
+              "to_number": "+12145550105",
+              "from_number": "+10000000000",
+              "retell_llm_dynamic_variables": {
+                "lead_id": "L-005",
+                "customer_name": "Angela Price",
+                "customer_phone": "+12145550105",
+                "lead_source": "Old CRM",
+                "lead_details": "Roof is about 20 years old and wants a quote",
+                "property_address": "1120 Willow Way"
+              },
+              "metadata": {
+                "lead_id": "L-005"
+              },
+              "transcript": "Agent: Hi Angela, I'm Maya from LB Roofing. You reached out a while back about a quote for your roof since it's around twenty years old. Do you have a minute?\nUser: Yeah, sure.\nAgent: Do you still need help with your roof?\nUser: Yeah, I don't mind someone coming down.\n(trimmed sample)",
+              "recording_url": "https://example.com/recording.wav",
+              "disconnection_reason": "agent_hangup",
+              "call_cost": {
+                "combined_cost": 13.6
+              },
+              "call_analysis": {
+                "call_summary": "The agent confirmed the user's interest in a roof inspection and discussed available times. The user preferred an appointment on Friday afternoon, which was successfully booked for 1 PM at the existing address. The call ended positively with the booking confirmed.",
+                "in_voicemail": false,
+                "user_sentiment": "Positive",
+                "call_successful": true,
+                "custom_analysis_data": {
+                  "still_interested": "yes",
+                  "outcome": "booked",
+                  "roof_issue": "wood",
+                  "alternate_phone_number": "",
+                  "updated_property_address": "",
+                  "updated_customer_name": "",
+                  "booking_note": "Booked for Friday, Nov 27 at 1:00 PM"
+                }
+              }
+            }
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

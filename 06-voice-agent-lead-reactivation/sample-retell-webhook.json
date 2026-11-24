@@ -1,0 +1,53 @@
+{
+  "headers": {
+    "content-type": "application/json"
+  },
+  "params": {},
+  "query": {},
+  "body": {
+    "event": "call_analyzed",
+    "call": {
+      "call_id": "call_sample_0001",
+      "call_type": "phone_call",
+      "agent_name": "LB Roofing - Lead Reactivation (Maya)",
+      "call_status": "ended",
+      "start_timestamp": 1795427996000,
+      "end_timestamp": 1795428065000,
+      "duration_ms": 69000,
+      "to_number": "+12145550105",
+      "from_number": "+10000000000",
+      "retell_llm_dynamic_variables": {
+        "lead_id": "L-005",
+        "customer_name": "Angela Price",
+        "customer_phone": "+12145550105",
+        "lead_source": "Old CRM",
+        "lead_details": "Roof is about 20 years old and wants a quote",
+        "property_address": "1120 Willow Way"
+      },
+      "metadata": {
+        "lead_id": "L-005"
+      },
+      "transcript": "Agent: Hi Angela, I'm Maya from LB Roofing. You reached out a while back about a quote for your roof since it's around twenty years old. Do you have a minute?\nUser: Yeah, sure.\nAgent: Do you still need help with your roof?\nUser: Yeah, I don't mind someone coming down.\n(trimmed sample)",
+      "recording_url": "https://example.com/recording.wav",
+      "disconnection_reason": "agent_hangup",
+      "call_cost": {
+        "combined_cost": 13.6
+      },
+      "call_analysis": {
+        "call_summary": "The agent confirmed the user's interest in a roof inspection and discussed available times. The user preferred an appointment on Friday afternoon, which was successfully booked for 1 PM at the existing address. The call ended positively with the booking confirmed.",
+        "in_voicemail": false,
+        "user_sentiment": "Positive",
+        "call_successful": true,
+        "custom_analysis_data": {
+          "still_interested": "yes",
+          "outcome": "booked",
+          "roof_issue": "wood",
+          "alternate_phone_number": "",
+          "updated_property_address": "",
+          "updated_customer_name": "",
+          "booking_note": "Booked for Friday, Nov 27 at 1:00 PM"
+        }
+      }
+    }
+  }
+}
